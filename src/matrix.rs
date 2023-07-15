@@ -1,6 +1,8 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Sub, SubAssign};
+use crate::vector::Vector;
 
-#[derive(Clone, Debug, PartialEq)]
+
+#[derive(Clone, Debug)]
 pub struct Matrix<T>
 {
     pub rows: usize,
@@ -20,16 +22,73 @@ pub struct MatrixIterator<'a, T>
 
 
 impl<T> Matrix<T>
-where T: Default + Clone
+where T: Default + Clone + Sized
 {
     pub fn new(shape: (usize, usize)) -> Self
     {
         Self {rows: shape.0, cols: shape.1, offset: 0, row_stride: shape.1, col_stride: 1, elements: vec![T::default(); shape.0 * shape.1]}
     }
 
+    pub fn from_vec(shape: (usize, usize), vec: Vec::<T>) -> Self
+    {
+        assert!(shape.0*shape.1 == vec.len());
+        Self { rows: shape.0, cols: shape.1, offset: 0, row_stride: shape.1, col_stride: 1, elements: vec }
+    }
+
+
     pub fn shape(&self) -> (usize, usize)
     {
         (self.rows, self.cols)
+    }
+}
+
+impl<T> PartialEq<Matrix<T>> for Matrix<T>
+where T: PartialEq
+{
+    fn eq(&self, other: &Matrix<T>) -> bool 
+    {
+        if self.rows != other.rows || self.cols != other.cols
+        {
+            return false;
+        }
+
+        for row in 0..self.rows
+        {
+            for col in 0..self.cols
+            {
+                let pos = (row, col);
+                if self[pos] != other[pos]
+                {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    fn ne(&self, other: &Matrix<T>) -> bool 
+    {
+        !(self == other)
+    }
+}
+
+impl Matrix<f64>
+{
+    pub fn approximately(&self, other: &Matrix<f64>, tol: f64) -> bool
+    {
+        assert!((self.rows == other.rows) && (self.cols == other.cols));
+        for row in 0..self.rows
+        {
+            for col in 0..self.cols
+            {
+                let pos = (row, col);
+                if (self[pos] - other[pos]).abs() > tol 
+                {
+                    return false;
+                }
+            }
+        }
+        true
     }
 }
 
@@ -221,6 +280,26 @@ where T: Mul<Output = T> + Copy + Default
         }
         out
     }
+}
+
+impl<T> Mul<Vector<T>> for Matrix<T>
+where T: AddAssign + Mul<Output = T> + Copy + Default
+{
+    type Output = Vector<T>;
+    fn mul(self, rhs: Vector<T>) -> Self::Output 
+    {
+        assert!(self.cols == rhs.size);
+        let mut out = Vector::new(self.rows);
+        for row in 0..self.rows
+        {
+            for col in 0..self.cols
+            {
+                let pos = (self.rows, self.cols);
+                out[row] += self[pos] * rhs[col];
+            }
+        }
+        out
+    }    
 }
 
 impl<T> Mul<T> for Matrix<T>
