@@ -1,7 +1,8 @@
 use crate::matrix::Matrix;
 
 
-pub fn lup_square_inplace(matrix: &mut Matrix) -> Vec<usize>
+
+pub fn lup_square_inplace(matrix: &mut Matrix<f64>) -> Vec<usize>
 {
     assert!((matrix.rows == matrix.cols));
     let n = matrix.rows;
@@ -36,7 +37,7 @@ pub fn lup_square_inplace(matrix: &mut Matrix) -> Vec<usize>
     perm
 }
 
-pub fn lup_square(matrix: &Matrix) -> (Matrix, Vec<usize>)
+pub fn lup_square(matrix: &Matrix<f64>) -> (Matrix<f64>, Vec<usize>)
 {
     let mut mat = matrix.clone();
     let perm = lup_square_inplace(&mut mat);

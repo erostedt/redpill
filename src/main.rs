@@ -6,7 +6,7 @@ use crate::decompositions::lup_square;
 
 fn main() 
 {
-    let mut matrix = Matrix::zero((3, 3));
+    let mut matrix = Matrix::<f64>::new((3, 3));
     matrix[(0, 0)] = 0.0;
     matrix[(0, 1)] = 5.0;
     matrix[(0, 2)] = 22.0/3.0;
@@ -22,4 +22,8 @@ fn main()
 
     println!("{:?}", lu);
     println!("{:?}", p);
+    for element in lu.iter()
+    {
+        println!("{:?}", element);
+    }
 }

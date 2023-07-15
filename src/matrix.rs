@@ -1,21 +1,30 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Sub, SubAssign};
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Matrix
+pub struct Matrix<T>
 {
     pub rows: usize,
     pub cols: usize,
     offset: usize,
     row_stride: usize,
     col_stride: usize,
-    elements: Vec<f64>,
+    elements: Vec<T>,
 }
 
-impl Matrix
+pub struct MatrixIterator<'a, T>
 {
-    pub fn zero(shape: (usize, usize)) -> Self
+    matrix: &'a Matrix<T>,
+    row: usize,
+    col: usize,
+}
+
+
+impl<T> Matrix<T>
+where T: Default + Clone
+{
+    pub fn new(shape: (usize, usize)) -> Self
     {
-        Self {rows: shape.0, cols: shape.1, offset: 0, row_stride: shape.1, col_stride: 1, elements: vec![0.0; shape.0 * shape.1]}
+        Self {rows: shape.0, cols: shape.1, offset: 0, row_stride: shape.1, col_stride: 1, elements: vec![T::default(); shape.0 * shape.1]}
     }
 
     pub fn shape(&self) -> (usize, usize)
@@ -25,9 +34,9 @@ impl Matrix
 }
 
 
-impl Index<(usize, usize)> for Matrix
+impl<T> Index<(usize, usize)> for Matrix<T>
 {
-    type Output = f64;
+    type Output = T;
     #[inline(always)]
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
@@ -35,22 +44,23 @@ impl Index<(usize, usize)> for Matrix
     }
 }
 
-impl IndexMut<(usize, usize)> for Matrix
+impl<T> IndexMut<(usize, usize)> for Matrix<T>
 {
     #[inline(always)]
-    fn index_mut(&mut self, index: (usize, usize)) -> &mut f64
+    fn index_mut(&mut self, index: (usize, usize)) -> &mut T
     {
         &mut self.elements[self.offset + index.0 * self.row_stride + index.1 * self.col_stride]
     }    
 }
 
-impl Add<Matrix> for Matrix
+impl<T> Add<Matrix<T>> for Matrix<T>
+where T: Add<Output = T> + Copy + Default
 {
-    type Output = Matrix;
-    fn add(self, rhs: Matrix) -> Self::Output 
+    type Output = Matrix<T>;
+    fn add(self, rhs: Matrix<T>) -> Self::Output 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
-        let mut out = Matrix::zero(self.shape());
+        let mut out = Matrix::new(self.shape());
         for row in 0..self.rows 
         {
             for col in 0..self.cols 
@@ -63,12 +73,13 @@ impl Add<Matrix> for Matrix
     }
 }
 
-impl Add<f64> for Matrix 
+impl<T> Add<T> for Matrix<T>
+where T: Add<Output = T> + Copy + Default
 {
-    type Output = Matrix;
-    fn add(self, rhs: f64) -> Self::Output 
+    type Output = Matrix<T>;
+    fn add(self, rhs: T) -> Self::Output 
     {
-        let mut out = Matrix::zero(self.shape());
+        let mut out = Matrix::new(self.shape());
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -81,18 +92,10 @@ impl Add<f64> for Matrix
     }
 }
 
-impl Add<Matrix> for f64
+impl<T> AddAssign<Matrix<T>> for Matrix<T>
+where T: AddAssign + Copy
 {
-    type Output = Matrix;
-    fn add(self, rhs: Matrix) -> Self::Output 
-    {
-        rhs + self   
-    }
-}
-
-impl AddAssign<Matrix> for Matrix 
-{
-    fn add_assign(&mut self, rhs: Matrix) 
+    fn add_assign(&mut self, rhs: Matrix<T>) 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
         for row in 0..self.rows
@@ -107,9 +110,10 @@ impl AddAssign<Matrix> for Matrix
 }
 
 
-impl AddAssign<f64> for Matrix 
+impl<T> AddAssign<T> for Matrix<T>
+where T: AddAssign + Copy
 {
-    fn add_assign(&mut self, rhs: f64) 
+    fn add_assign(&mut self, rhs: T) 
     {
         for row in 0..self.rows
         {
@@ -123,13 +127,14 @@ impl AddAssign<f64> for Matrix
 }
 
 
-impl Sub<Matrix> for Matrix 
+impl<T> Sub<Matrix<T>> for Matrix<T> 
+where T: Sub<Output = T> + Copy + Default
 {
-    type Output = Matrix;
-    fn sub(self, rhs: Matrix) -> Self::Output 
+    type Output = Matrix<T>;
+    fn sub(self, rhs: Matrix<T>) -> Self::Output 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
-        let mut out = Matrix::zero(self.shape());   
+        let mut out = Matrix::new(self.shape());   
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -143,12 +148,13 @@ impl Sub<Matrix> for Matrix
 }
 
 
-impl Sub<f64> for Matrix 
+impl<T> Sub<T> for Matrix<T> 
+where T: Sub<Output = T> + Copy + Default
 {
-    type Output = Matrix;
-    fn sub(self, rhs: f64) -> Self::Output 
+    type Output = Matrix<T>;
+    fn sub(self, rhs: T) -> Self::Output 
     {
-        let mut out = Matrix::zero(self.shape());
+        let mut out = Matrix::new(self.shape());
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -162,28 +168,10 @@ impl Sub<f64> for Matrix
 }
 
 
-impl Sub<Matrix> for f64 
+impl<T> SubAssign<Matrix<T>> for Matrix<T>
+where T: SubAssign + Copy
 {
-    type Output = Matrix;
-    fn sub(self, rhs: Matrix) -> Self::Output 
-    {
-        let mut out = Matrix::zero(rhs.shape());
-        for row in 0..rhs.rows
-        {
-            for col in 0..rhs.cols
-            {
-                let pos = (row, col);
-                out[pos] = self - rhs[pos];     
-            }
-        }
-        out
-    }    
-}
-
-
-impl SubAssign<Matrix> for Matrix
-{
-    fn sub_assign(&mut self, rhs: Matrix) 
+    fn sub_assign(&mut self, rhs: Matrix<T>) 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
         for row in 0..self.rows
@@ -198,9 +186,10 @@ impl SubAssign<Matrix> for Matrix
 }
 
 
-impl SubAssign<f64> for Matrix
+impl<T> SubAssign<T> for Matrix<T>
+where T: SubAssign + Copy
 {
-    fn sub_assign(&mut self, rhs: f64) 
+    fn sub_assign(&mut self, rhs: T) 
     {
         for row in 0..self.rows
         {
@@ -214,13 +203,14 @@ impl SubAssign<f64> for Matrix
 }
 
 
-impl Mul<Matrix> for Matrix
+impl<T> Mul<Matrix<T>> for Matrix<T>
+where T: Mul<Output = T> + Copy + Default
 {
-    type Output = Matrix;
-    fn mul(self, rhs: Matrix) -> Self::Output 
+    type Output = Matrix<T>;
+    fn mul(self, rhs: Matrix<T>) -> Self::Output 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
-        let mut out = Matrix::zero(self.shape());
+        let mut out = Matrix::new(self.shape());
         for row in 0..self.rows 
         {
             for col in 0..self.cols 
@@ -233,12 +223,13 @@ impl Mul<Matrix> for Matrix
     }
 }
 
-impl Mul<f64> for Matrix 
+impl<T> Mul<T> for Matrix<T>
+where T: Mul<Output = T> + Copy + Default
 {
-    type Output = Matrix;
-    fn mul(self, rhs: f64) -> Self::Output 
+    type Output = Matrix<T>;
+    fn mul(self, rhs: T) -> Self::Output 
     {
-        let mut out = Matrix::zero(self.shape());
+        let mut out = Matrix::new(self.shape());
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -251,18 +242,10 @@ impl Mul<f64> for Matrix
     }
 }
 
-impl Mul<Matrix> for f64
+impl<T> MulAssign<Matrix<T>> for Matrix<T>
+where T: MulAssign + Copy
 {
-    type Output = Matrix;
-    fn mul(self, rhs: Matrix) -> Self::Output 
-    {
-        rhs * self   
-    }
-}
-
-impl MulAssign<Matrix> for Matrix 
-{
-    fn mul_assign(&mut self, rhs: Matrix) 
+    fn mul_assign(&mut self, rhs: Matrix<T>) 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
         for row in 0..self.rows
@@ -277,9 +260,10 @@ impl MulAssign<Matrix> for Matrix
 }
 
 
-impl MulAssign<f64> for Matrix 
+impl<T> MulAssign<T> for Matrix<T>
+where T: MulAssign + Copy
 {
-    fn mul_assign(&mut self, rhs: f64) 
+    fn mul_assign(&mut self, rhs: T) 
     {
         for row in 0..self.rows
         {
@@ -293,13 +277,14 @@ impl MulAssign<f64> for Matrix
 }
 
 
-impl Div<Matrix> for Matrix 
+impl<T> Div<Matrix<T>> for Matrix<T>
+where T: Div<Output = T> + Copy + Default
 {
-    type Output = Matrix;
-    fn div(self, rhs: Matrix) -> Self::Output 
+    type Output = Matrix<T>;
+    fn div(self, rhs: Matrix<T>) -> Self::Output 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
-        let mut out = Matrix::zero(self.shape());   
+        let mut out = Matrix::new(self.shape());   
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -313,12 +298,13 @@ impl Div<Matrix> for Matrix
 }
 
 
-impl Div<f64> for Matrix 
+impl<T> Div<T> for Matrix<T> 
+where T: Div<Output = T> + Copy + Default
 {
-    type Output = Matrix;
-    fn div(self, rhs: f64) -> Self::Output 
+    type Output = Matrix<T>;
+    fn div(self, rhs: T) -> Self::Output 
     {
-        let mut out = Matrix::zero(self.shape());
+        let mut out = Matrix::new(self.shape());
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -332,28 +318,10 @@ impl Div<f64> for Matrix
 }
 
 
-impl Div<Matrix> for f64 
+impl<T> DivAssign<Matrix<T>> for Matrix<T>
+where T: DivAssign + Copy
 {
-    type Output = Matrix;
-    fn div(self, rhs: Matrix) -> Self::Output 
-    {
-        let mut out = Matrix::zero(rhs.shape());
-        for row in 0..rhs.rows
-        {
-            for col in 0..rhs.cols
-            {
-                let pos = (row, col);
-                out[pos] = self / rhs[pos];     
-            }
-        }
-        out
-    }    
-}
-
-
-impl DivAssign<Matrix> for Matrix
-{
-    fn div_assign(&mut self, rhs: Matrix) 
+    fn div_assign(&mut self, rhs: Matrix<T>) 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
         for row in 0..self.rows
@@ -368,9 +336,10 @@ impl DivAssign<Matrix> for Matrix
 }
 
 
-impl DivAssign<f64> for Matrix
+impl<T> DivAssign<T> for Matrix<T>
+where T: DivAssign + Copy
 {
-    fn div_assign(&mut self, rhs: f64) 
+    fn div_assign(&mut self, rhs: T) 
     {
         for row in 0..self.rows
         {
@@ -383,13 +352,36 @@ impl DivAssign<f64> for Matrix
     }
 }
 
-
-impl Matrix 
+impl<'a, T> Iterator for MatrixIterator<'a, T>
 {
-    pub fn matmul(&self, rhs: Matrix) -> Matrix
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> 
+    {
+        if self.row >= self.matrix.rows
+        {
+            return None;
+        }
+        
+        let res = Some(&self.matrix[(self.row, self.col)]);
+        self.col += 1;
+        
+        if self.col >= self.matrix.cols
+        {
+            self.row += 1;
+            self.col = 0;
+        }
+        res
+    }
+}
+
+
+impl<T> Matrix<T>
+where T: AddAssign + Mul<Output = T> + Copy + Default
+{
+    pub fn matmul(&self, rhs: Matrix<T>) -> Matrix<T>
     {
         assert!(self.cols == rhs.rows);
-        let mut out = Matrix::zero((self.rows, rhs.cols));
+        let mut out = Matrix::new((self.rows, rhs.cols));
         for i in 0..self.rows
         {
             for j in 0..rhs.cols
@@ -402,7 +394,11 @@ impl Matrix
         }
         out
     }
+}
 
+impl<T> Matrix<T>
+where T: Copy
+{
     pub fn swap_rows(&mut self, row1: usize, row2: usize)
     {
         assert!((row1 < self.rows) && (row2 < self.rows));        
@@ -414,5 +410,13 @@ impl Matrix
             self[p1] = self[p2];
             self[p2] = temp;
         }
-    }    
+    }
+
+}
+impl <T> Matrix<T>
+{
+    pub fn iter(&self) -> MatrixIterator<T>
+    {
+        MatrixIterator { matrix: self, row: 0, col: 0 }
+    }
 }
