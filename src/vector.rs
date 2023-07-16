@@ -15,13 +15,19 @@ pub struct VectorIterator<'a, T>
     current: usize,
 }
 
+//pub struct VectorIteratorMut<'a, T: 'a>
+//{
+//    vector: &'a mut Vector<T>,
+//    current: usize,
+//}
+
 
 impl<T> Vector<T>
 where T: Default + Clone
 {
     pub fn new(size: usize) -> Self
     {
-        Self {size, offset: 0, elements: vec![T::default(); size]}
+        Self {size, offset: 0, elements: vec![T::default(); size] }
     }
 }
 
@@ -280,10 +286,36 @@ where T: DivAssign + Copy
     }
 }
 
+
+impl<T> Vector<T>  
+where T: Default + AddAssign + Mul<Output = T> + Copy
+{
+    pub fn dot(&self, other: &Vector<T>) -> T
+    {
+        assert!(self.size == other.size);
+        let mut res = T::default();
+        for (x1, x2) in self.iter().zip(other.iter())
+        {
+            res += (*x1) * (*x2); 
+        }
+        res
+    }
+}
+
+impl<T> Vector<T>
+where T: Default + AddAssign + Mul<Output = T> + Copy + Div<Output = T>
+{
+     pub fn proj(&self, other: &Vector<T>) -> Vector<T>
+    {
+        assert!(self.size == other.size);
+        self.clone() * self.dot(other) / other.mag_sq()   
+    }
+}
+
 impl<'a, T> Iterator for VectorIterator<'a, T>
 {
     type Item = &'a T;
-    fn next(&mut self) -> Option<Self::Item> 
+    fn next(& mut self) -> Option<Self::Item> 
     {
         if self.current >= self.vector.size 
         {
@@ -296,6 +328,22 @@ impl<'a, T> Iterator for VectorIterator<'a, T>
     }
 }
 
+//impl<'a, T> Iterator for VectorIteratorMut<'a, T>
+//where T: Default
+//{
+//    type Item = &'a mut T;
+//    fn next(&mut self) -> Option<Self::Item> 
+//    {
+//        if self.current >= self.vector.size
+//        {
+//            return None;
+//        }
+//        let res = Some(&mut self.vector[self.current]);
+//        self.current += 1;
+//        res
+//    }
+//}
+
 
 impl<T> Vector<T>
 {
@@ -303,4 +351,72 @@ impl<T> Vector<T>
     {
         VectorIterator { vector: self, current: 0, }
     }
+
+    //pub fn iter_mut(&mut self) -> VectorIteratorMut<T>
+    //{
+    //   VectorIteratorMut { vector: self, current: 0 , _boo: PhantomData }
+    //} 
 }
+
+impl <T> Vector<T> 
+where T: AddAssign + Mul<Output = T> + Default + Copy
+{
+    pub fn mag_sq(&self) -> T
+    {
+        let mut res = T::default();
+        for x in self.iter()
+        {
+            res += (*x) * (*x);
+        }
+        res
+    }
+}
+
+impl<T> Vector<T> 
+where T: AddAssign + Default + Copy
+{
+    pub fn sum(&self) -> T
+    {
+        let mut res = T::default();
+        for x in self.iter()
+        {
+            res += *x;
+        }
+        res
+    }
+}
+
+impl<T> Vector<T> 
+where T: Mul<Output = T> + Sub<Output = T> + Default + Copy
+{
+    pub fn cross(&self, other: &Vector<T>) -> Vector<T>
+    {
+        assert!(self.size == other.size);
+        assert!(self.size == 3);
+        
+        let mut res = Vector::<T>::new(self.size);
+        res[0] = self[1] * other[2] - self[2] * other[1];
+        res[1] = self[0] * other[2] - self[2] * other[0];
+        res[2] = self[0] * other[1] - self[1] * other[0];
+        res
+    }
+
+    
+}
+
+impl Vector<f64> 
+{
+    pub fn mag(&self) -> f64
+    {
+        self.mag_sq().sqrt()
+    }
+}
+
+impl Vector<f32>
+{
+    pub fn mag(&self) -> f32
+    {
+        self.mag_sq().sqrt()
+    }
+}
+

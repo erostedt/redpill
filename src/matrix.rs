@@ -498,4 +498,26 @@ impl <T> Matrix<T>
     {
         MatrixIterator { matrix: self, row: 0, col: 0 }
     }
+
+    pub fn transpose_self(&mut self)
+    {   
+        let mut temp = self.rows;
+        self.rows = self.cols;
+        self.cols = temp;
+        
+        temp = self.row_stride;
+        self.row_stride = self.col_stride;
+        self.col_stride = temp;
+    }    
+}
+
+impl <T> Matrix<T> 
+where T: Clone
+{
+    pub fn transposed(&self) -> Matrix<T>
+    {
+        let mut mat = self.clone();
+        mat.transpose_self();
+        mat
+    }
 }
