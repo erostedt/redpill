@@ -1,38 +1,68 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Sub, SubAssign};
-use crate::vector::Vector;
-
+use std::iter::Iterator;
 
 #[derive(Clone, Debug)]
-pub struct Matrix<T>
+pub struct Mat<T>
 {
     pub rows: usize,
     pub cols: usize,
-    offset: usize,
     row_stride: usize,
     col_stride: usize,
     elements: Vec<T>,
 }
 
-pub struct MatrixIterator<'a, T>
+pub struct TraceIter<'a, T>
 {
-    matrix: &'a Matrix<T>,
-    row: usize,
-    col: usize,
+    pub matrix: &'a Mat<T>,
+    current: usize,
+    min_dim: usize,
+}
+
+impl<'a, T> Iterator for TraceIter<'a, T>
+{
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> 
+    {
+        if self.current >= self.min_dim
+        {
+            return None;
+        }
+
+        let elem = Some(&self.matrix[(self.current, self.current)]);
+        self.current += 1;
+        elem
+    }    
 }
 
 
-impl<T> Matrix<T>
+#[macro_export]
+macro_rules! colvecs {
+    ($([$tail:expr,];)* -> [$($head:expr,)*]) => (
+        vec![$($head,)* $($tail,)*]
+    );
+    ($([$middle:expr, $($tail:expr,)*];)* -> [$($head:expr,)*]) => (
+        colvecs!($([$($tail,)*];)* -> [$($head,)* $($middle,)*])
+    );
+    ($($($item:expr),*;)*) => (
+        colvecs!($([$($item,)*];)* -> [])
+    );
+    ($($($item:expr,)*;)*) => (
+        colvecs!($([$($item,)*];)* -> [])
+    );
+}
+
+impl<T> Mat<T>
 where T: Default + Clone + Sized
 {
     pub fn new(shape: (usize, usize)) -> Self
     {
-        Self {rows: shape.0, cols: shape.1, offset: 0, row_stride: shape.1, col_stride: 1, elements: vec![T::default(); shape.0 * shape.1]}
+        Self {rows: shape.0, cols: shape.1, row_stride: shape.1, col_stride: 1, elements: vec![T::default(); shape.0 * shape.1]}
     }
 
     pub fn from_vec(shape: (usize, usize), vec: Vec::<T>) -> Self
     {
         assert!(shape.0*shape.1 == vec.len());
-        Self { rows: shape.0, cols: shape.1, offset: 0, row_stride: shape.1, col_stride: 1, elements: vec }
+        Self { rows: shape.0, cols: shape.1, row_stride: shape.1, col_stride: 1, elements: vec }
     }
 
 
@@ -40,12 +70,18 @@ where T: Default + Clone + Sized
     {
         (self.rows, self.cols)
     }
+
+    pub fn trace(&self) -> TraceIter<T>
+    {
+        let n = std::cmp::min(self.rows, self.cols);
+        TraceIter { matrix: self, current: 0, min_dim: n }
+    }
 }
 
-impl<T> PartialEq<Matrix<T>> for Matrix<T>
+impl<T> PartialEq<Mat<T>> for Mat<T>
 where T: PartialEq
 {
-    fn eq(&self, other: &Matrix<T>) -> bool 
+    fn eq(&self, other: &Mat<T>) -> bool 
     {
         if self.rows != other.rows || self.cols != other.cols
         {
@@ -66,15 +102,15 @@ where T: PartialEq
         true
     }
 
-    fn ne(&self, other: &Matrix<T>) -> bool 
+    fn ne(&self, other: &Mat<T>) -> bool 
     {
         !(self == other)
     }
 }
 
-impl Matrix<f64>
+impl Mat<f64>
 {
-    pub fn approximately(&self, other: &Matrix<f64>, tol: f64) -> bool
+    pub fn approximately(&self, other: &Mat<f64>, tol: f64) -> bool
     {
         assert!((self.rows == other.rows) && (self.cols == other.cols));
         for row in 0..self.rows
@@ -93,33 +129,33 @@ impl Matrix<f64>
 }
 
 
-impl<T> Index<(usize, usize)> for Matrix<T>
+impl<T> Index<(usize, usize)> for Mat<T>
 {
     type Output = T;
     #[inline(always)]
     fn index(&self, index: (usize, usize)) -> &Self::Output
     {
-        &self.elements[self.offset + index.0 * self.row_stride + index.1 * self.col_stride]
+        &self.elements[index.0 * self.row_stride + index.1 * self.col_stride]
     }
 }
 
-impl<T> IndexMut<(usize, usize)> for Matrix<T>
+impl<T> IndexMut<(usize, usize)> for Mat<T>
 {
     #[inline(always)]
     fn index_mut(&mut self, index: (usize, usize)) -> &mut T
     {
-        &mut self.elements[self.offset + index.0 * self.row_stride + index.1 * self.col_stride]
+        &mut self.elements[index.0 * self.row_stride + index.1 * self.col_stride]
     }    
 }
 
-impl<T> Add<Matrix<T>> for Matrix<T>
+impl<T> Add<Mat<T>> for Mat<T>
 where T: Add<Output = T> + Copy + Default
 {
-    type Output = Matrix<T>;
-    fn add(self, rhs: Matrix<T>) -> Self::Output 
+    type Output = Mat<T>;
+    fn add(self, rhs: Mat<T>) -> Self::Output 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
-        let mut out = Matrix::new(self.shape());
+        let mut out = Mat::new(self.shape());
         for row in 0..self.rows 
         {
             for col in 0..self.cols 
@@ -132,13 +168,13 @@ where T: Add<Output = T> + Copy + Default
     }
 }
 
-impl<T> Add<T> for Matrix<T>
+impl<T> Add<T> for Mat<T>
 where T: Add<Output = T> + Copy + Default
 {
-    type Output = Matrix<T>;
+    type Output = Mat<T>;
     fn add(self, rhs: T) -> Self::Output 
     {
-        let mut out = Matrix::new(self.shape());
+        let mut out = Mat::new(self.shape());
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -151,10 +187,10 @@ where T: Add<Output = T> + Copy + Default
     }
 }
 
-impl<T> AddAssign<Matrix<T>> for Matrix<T>
+impl<T> AddAssign<Mat<T>> for Mat<T>
 where T: AddAssign + Copy
 {
-    fn add_assign(&mut self, rhs: Matrix<T>) 
+    fn add_assign(&mut self, rhs: Mat<T>) 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
         for row in 0..self.rows
@@ -169,7 +205,7 @@ where T: AddAssign + Copy
 }
 
 
-impl<T> AddAssign<T> for Matrix<T>
+impl<T> AddAssign<T> for Mat<T>
 where T: AddAssign + Copy
 {
     fn add_assign(&mut self, rhs: T) 
@@ -186,14 +222,14 @@ where T: AddAssign + Copy
 }
 
 
-impl<T> Sub<Matrix<T>> for Matrix<T> 
+impl<T> Sub<Mat<T>> for Mat<T> 
 where T: Sub<Output = T> + Copy + Default
 {
-    type Output = Matrix<T>;
-    fn sub(self, rhs: Matrix<T>) -> Self::Output 
+    type Output = Mat<T>;
+    fn sub(self, rhs: Mat<T>) -> Self::Output 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
-        let mut out = Matrix::new(self.shape());   
+        let mut out = Mat::new(self.shape());   
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -207,13 +243,13 @@ where T: Sub<Output = T> + Copy + Default
 }
 
 
-impl<T> Sub<T> for Matrix<T> 
+impl<T> Sub<T> for Mat<T> 
 where T: Sub<Output = T> + Copy + Default
 {
-    type Output = Matrix<T>;
+    type Output = Mat<T>;
     fn sub(self, rhs: T) -> Self::Output 
     {
-        let mut out = Matrix::new(self.shape());
+        let mut out = Mat::new(self.shape());
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -227,10 +263,10 @@ where T: Sub<Output = T> + Copy + Default
 }
 
 
-impl<T> SubAssign<Matrix<T>> for Matrix<T>
+impl<T> SubAssign<Mat<T>> for Mat<T>
 where T: SubAssign + Copy
 {
-    fn sub_assign(&mut self, rhs: Matrix<T>) 
+    fn sub_assign(&mut self, rhs: Mat<T>) 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
         for row in 0..self.rows
@@ -245,7 +281,7 @@ where T: SubAssign + Copy
 }
 
 
-impl<T> SubAssign<T> for Matrix<T>
+impl<T> SubAssign<T> for Mat<T>
 where T: SubAssign + Copy
 {
     fn sub_assign(&mut self, rhs: T) 
@@ -262,14 +298,14 @@ where T: SubAssign + Copy
 }
 
 
-impl<T> Mul<Matrix<T>> for Matrix<T>
+impl<T> Mul<Mat<T>> for Mat<T>
 where T: Mul<Output = T> + Copy + Default
 {
-    type Output = Matrix<T>;
-    fn mul(self, rhs: Matrix<T>) -> Self::Output 
+    type Output = Mat<T>;
+    fn mul(self, rhs: Mat<T>) -> Self::Output 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
-        let mut out = Matrix::new(self.shape());
+        let mut out = Mat::new(self.shape());
         for row in 0..self.rows 
         {
             for col in 0..self.cols 
@@ -282,14 +318,14 @@ where T: Mul<Output = T> + Copy + Default
     }
 }
 
-impl<T> Mul<Vector<T>> for Matrix<T>
+impl<T> Mul<Vec<T>> for Mat<T>
 where T: AddAssign + Mul<Output = T> + Copy + Default
 {
-    type Output = Vector<T>;
-    fn mul(self, rhs: Vector<T>) -> Self::Output 
+    type Output = Vec<T>;
+    fn mul(self, rhs: Vec<T>) -> Self::Output 
     {
-        assert!(self.cols == rhs.size);
-        let mut out = Vector::new(self.rows);
+        assert!(self.cols == rhs.len());
+        let mut out = vec![T::default(); self.rows];
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -302,13 +338,13 @@ where T: AddAssign + Mul<Output = T> + Copy + Default
     }    
 }
 
-impl<T> Mul<T> for Matrix<T>
+impl<T> Mul<T> for Mat<T>
 where T: Mul<Output = T> + Copy + Default
 {
-    type Output = Matrix<T>;
+    type Output = Mat<T>;
     fn mul(self, rhs: T) -> Self::Output 
     {
-        let mut out = Matrix::new(self.shape());
+        let mut out = Mat::new(self.shape());
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -321,10 +357,10 @@ where T: Mul<Output = T> + Copy + Default
     }
 }
 
-impl<T> MulAssign<Matrix<T>> for Matrix<T>
+impl<T> MulAssign<Mat<T>> for Mat<T>
 where T: MulAssign + Copy
 {
-    fn mul_assign(&mut self, rhs: Matrix<T>) 
+    fn mul_assign(&mut self, rhs: Mat<T>) 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
         for row in 0..self.rows
@@ -339,7 +375,7 @@ where T: MulAssign + Copy
 }
 
 
-impl<T> MulAssign<T> for Matrix<T>
+impl<T> MulAssign<T> for Mat<T>
 where T: MulAssign + Copy
 {
     fn mul_assign(&mut self, rhs: T) 
@@ -356,14 +392,14 @@ where T: MulAssign + Copy
 }
 
 
-impl<T> Div<Matrix<T>> for Matrix<T>
+impl<T> Div<Mat<T>> for Mat<T>
 where T: Div<Output = T> + Copy + Default
 {
-    type Output = Matrix<T>;
-    fn div(self, rhs: Matrix<T>) -> Self::Output 
+    type Output = Mat<T>;
+    fn div(self, rhs: Mat<T>) -> Self::Output 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
-        let mut out = Matrix::new(self.shape());   
+        let mut out = Mat::new(self.shape());   
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -377,13 +413,13 @@ where T: Div<Output = T> + Copy + Default
 }
 
 
-impl<T> Div<T> for Matrix<T> 
+impl<T> Div<T> for Mat<T> 
 where T: Div<Output = T> + Copy + Default
 {
-    type Output = Matrix<T>;
+    type Output = Mat<T>;
     fn div(self, rhs: T) -> Self::Output 
     {
-        let mut out = Matrix::new(self.shape());
+        let mut out = Mat::new(self.shape());
         for row in 0..self.rows
         {
             for col in 0..self.cols
@@ -397,10 +433,10 @@ where T: Div<Output = T> + Copy + Default
 }
 
 
-impl<T> DivAssign<Matrix<T>> for Matrix<T>
+impl<T> DivAssign<Mat<T>> for Mat<T>
 where T: DivAssign + Copy
 {
-    fn div_assign(&mut self, rhs: Matrix<T>) 
+    fn div_assign(&mut self, rhs: Mat<T>) 
     {
         assert!((self.rows == rhs.rows) && (self.cols == rhs.cols));
         for row in 0..self.rows
@@ -415,7 +451,7 @@ where T: DivAssign + Copy
 }
 
 
-impl<T> DivAssign<T> for Matrix<T>
+impl<T> DivAssign<T> for Mat<T>
 where T: DivAssign + Copy
 {
     fn div_assign(&mut self, rhs: T) 
@@ -431,36 +467,13 @@ where T: DivAssign + Copy
     }
 }
 
-impl<'a, T> Iterator for MatrixIterator<'a, T>
-{
-    type Item = &'a T;
-    fn next(&mut self) -> Option<Self::Item> 
-    {
-        if self.row >= self.matrix.rows
-        {
-            return None;
-        }
-        
-        let res = Some(&self.matrix[(self.row, self.col)]);
-        self.col += 1;
-        
-        if self.col >= self.matrix.cols
-        {
-            self.row += 1;
-            self.col = 0;
-        }
-        res
-    }
-}
-
-
-impl<T> Matrix<T>
+impl<T> Mat<T>
 where T: AddAssign + Mul<Output = T> + Copy + Default
 {
-    pub fn matmul(&self, rhs: Matrix<T>) -> Matrix<T>
+    pub fn matmul(&self, rhs: Mat<T>) -> Mat<T>
     {
         assert!(self.cols == rhs.rows);
-        let mut out = Matrix::new((self.rows, rhs.cols));
+        let mut out = Mat::new((self.rows, rhs.cols));
         for i in 0..self.rows
         {
             for j in 0..rhs.cols
@@ -475,7 +488,7 @@ where T: AddAssign + Mul<Output = T> + Copy + Default
     }
 }
 
-impl<T> Matrix<T>
+impl<T> Mat<T>
 where T: Copy
 {
     pub fn swap_rows(&mut self, row1: usize, row2: usize)
@@ -491,12 +504,19 @@ where T: Copy
         }
     }
 
+    
+
 }
-impl <T> Matrix<T>
+impl <T> Mat<T>
 {
-    pub fn iter(&self) -> MatrixIterator<T>
+    pub fn iter(&self) -> std::slice::Iter<'_, T>
     {
-        MatrixIterator { matrix: self, row: 0, col: 0 }
+        self.elements.iter()
+    }
+
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, T>
+    {
+        self.elements.iter_mut()
     }
 
     pub fn transpose_self(&mut self)
@@ -511,13 +531,26 @@ impl <T> Matrix<T>
     }    
 }
 
-impl <T> Matrix<T> 
+impl <T> Mat<T> 
 where T: Clone
 {
-    pub fn transposed(&self) -> Matrix<T>
+    pub fn transposed(&self) -> Mat<T>
     {
         let mut mat = self.clone();
         mat.transpose_self();
+        mat
+    }
+}
+
+impl Mat<f64>
+{
+    pub fn eye(size: usize) -> Mat<f64>
+    {
+        let mut mat = Mat::<f64>::new((size, size));
+        for r in 0..size
+        {
+            mat[(r, r)] = 1.0;
+        }
         mat
     }
 }

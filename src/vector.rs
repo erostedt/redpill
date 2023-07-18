@@ -1,53 +1,61 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Sub, SubAssign};
 
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Vector<T>
 {
-    pub size: usize,
-    offset: usize,
     elements: Vec<T>,
 }
 
-pub struct VectorIterator<'a, T>
-{
-    vector: &'a Vector<T>,
-    current: usize,
-}
-
-//pub struct VectorIteratorMut<'a, T: 'a>
-//{
-//    vector: &'a mut Vector<T>,
-//    current: usize,
-//}
-
-
-impl<T> Vector<T>
+impl<T> Vector<T> 
 where T: Default + Clone
 {
     pub fn new(size: usize) -> Self
     {
-        Self {size, offset: 0, elements: vec![T::default(); size] }
+        Self { elements: vec![T::default(); size] }
+    }
+
+    pub fn from_vec(vec: Vec<T>) -> Self
+    {
+        Self { elements: vec }
+    }
+}
+
+impl <T> Vector<T> 
+{
+    pub fn len(&self) -> usize
+    {
+        self.elements.len()
+    }
+    
+    pub fn iter(&self) -> std::slice::Iter<T>
+    {
+        self.elements.iter()
+    }
+    
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<T>
+    {
+        self.elements.iter_mut()
     }
 }
 
 
-impl<T> Index<usize> for Vector<T>
+impl<T> Index<usize> for Vector<T> 
 {
     type Output = T;
     #[inline(always)]
-    fn index(&self, index: usize) -> &Self::Output
+    fn index(&self, index: usize) -> &Self::Output 
     {
-        &self.elements[self.offset + index]
-    }
+        &self.elements[index]
+    }    
 }
 
-impl<T> IndexMut<usize> for Vector<T>
+impl<T> IndexMut<usize> for Vector<T> 
 {
     #[inline(always)]
-    fn index_mut(&mut self, index: usize) -> &mut T
+    fn index_mut(&mut self, index: usize) -> &mut T 
     {
-        &mut self.elements[self.offset + index]
+        &mut self.elements[index]
     }    
 }
 
@@ -57,9 +65,9 @@ where T: Add<Output = T> + Copy + Default
     type Output = Vector<T>;
     fn add(self, rhs: Vector<T>) -> Self::Output 
     {
-        assert!((self.size == rhs.size));
-        let mut out = Vector::new(self.size);
-        for i in 0..self.size
+        assert!((self.len() == rhs.len()));
+        let mut out = Vector::<T>::new(self.len());
+        for i in 0..self.len()
         {
             out[i] = self[i] + rhs[i];       
         }
@@ -67,14 +75,15 @@ where T: Add<Output = T> + Copy + Default
     }
 }
 
+
 impl<T> Add<T> for Vector<T>
 where T: Add<Output = T> + Copy + Default
 {
     type Output = Vector<T>;
     fn add(self, rhs: T) -> Self::Output 
     {
-        let mut out = Vector::new(self.size);
-        for i in 0..self.size
+        let mut out = Vector::new(self.len());
+        for i in 0..self.len()
         {
             out[i] = self[i] + rhs;
         }
@@ -83,12 +92,12 @@ where T: Add<Output = T> + Copy + Default
 }
 
 impl<T> AddAssign<Vector<T>> for Vector<T>
-where T: AddAssign + Copy
+where T: AddAssign + Copy + Clone + Default
 {
     fn add_assign(&mut self, rhs: Vector<T>) 
     {
-        assert!(self.size == rhs.size);
-        for i in 0..self.size
+        assert!(self.len() == rhs.len());
+        for i in 0..self.len()
         {
             self[i] += rhs[i];
         }  
@@ -101,7 +110,7 @@ where T: AddAssign + Copy
 {
     fn add_assign(&mut self, rhs: T) 
     {
-        for i in 0..self.size
+        for i in 0..self.len()
         {
             self[i] += rhs;
         }
@@ -115,9 +124,9 @@ where T: Sub<Output = T> + Copy + Default
     type Output = Vector<T>;
     fn sub(self, rhs: Vector<T>) -> Self::Output 
     {
-        assert!(self.size == rhs.size);
-        let mut out = Vector::new(self.size);   
-        for i in 0..self.size
+        assert!(self.len() == rhs.len());
+        let mut out = Vector::new(self.len());   
+        for i in 0..self.len()
         {
             out[i] = self[i] - rhs[i];
         }
@@ -132,8 +141,8 @@ where T: Sub<Output = T> + Copy + Default
     type Output = Vector<T>;
     fn sub(self, rhs: T) -> Self::Output 
     {
-        let mut out = Vector::new(self.size);
-        for i in 0..self.size
+        let mut out = Vector::new(self.len());
+        for i in 0..self.len()
         {
             out[i] = self[i] - rhs;
         }
@@ -147,8 +156,8 @@ where T: SubAssign + Copy
 {
     fn sub_assign(&mut self, rhs: Vector<T>) 
     {
-        assert!(self.size == rhs.size);
-        for i in 0..self.size
+        assert!(self.len() == rhs.len());
+        for i in 0..self.len()
         {
             self[i] -= rhs[i];
         }
@@ -161,7 +170,7 @@ where T: SubAssign + Copy
 {
     fn sub_assign(&mut self, rhs: T) 
     {
-        for i in 0..self.size
+        for i in 0..self.len()
         {
             self[i] -= rhs;
         }    
@@ -175,9 +184,9 @@ where T: Mul<Output = T> + Copy + Default
     type Output = Vector<T>;
     fn mul(self, rhs: Vector<T>) -> Self::Output 
     {
-        assert!(self.size == rhs.size);
-        let mut out = Vector::new(self.size);
-        for i in 0..self.size
+        assert!(self.len() == rhs.len());
+        let mut out = Vector::new(self.len());
+        for i in 0..self.len()
         {
             out[i] = self[i] * rhs[i];       
         }
@@ -191,8 +200,8 @@ where T: Mul<Output = T> + Copy + Default
     type Output = Vector<T>;
     fn mul(self, rhs: T) -> Self::Output 
     {
-        let mut out = Vector::new(self.size);
-        for i in 0..self.size
+        let mut out = Vector::new(self.len());
+        for i in 0..self.len()
         {
             out[i] = self[i] * rhs;
         }
@@ -205,8 +214,8 @@ where T: MulAssign + Copy
 {
     fn mul_assign(&mut self, rhs: Vector<T>) 
     {
-        assert!(self.size == rhs.size);
-        for i in 0..self.size
+        assert!(self.len() == rhs.len());
+        for i in 0..self.len()
         {
             self[i] *= rhs[i];
         }  
@@ -219,7 +228,7 @@ where T: MulAssign + Copy
 {
     fn mul_assign(&mut self, rhs: T) 
     {
-        for i in 0..self.size
+        for i in 0..self.len()
         {
             self[i] *= rhs;
         }
@@ -233,9 +242,9 @@ where T: Div<Output = T> + Copy + Default
     type Output = Vector<T>;
     fn div(self, rhs: Vector<T>) -> Self::Output 
     {
-        assert!(self.size == rhs.size);
-        let mut out = Vector::new(self.size);   
-        for i in 0..self.size
+        assert!(self.len() == rhs.len());
+        let mut out = Vector::new(self.len());   
+        for i in 0..self.len()
         {
             out[i] = self[i] / rhs[i];
         }
@@ -250,8 +259,8 @@ where T: Div<Output = T> + Copy + Default
     type Output = Vector<T>;
     fn div(self, rhs: T) -> Self::Output 
     {
-        let mut out = Vector::new(self.size);
-        for i in 0..self.size
+        let mut out = Vector::new(self.len());
+        for i in 0..self.len()
         {
             out[i] = self[i] / rhs;
         }
@@ -265,8 +274,8 @@ where T: DivAssign + Copy
 {
     fn div_assign(&mut self, rhs: Vector<T>) 
     {
-        assert!((self.size == rhs.size));
-        for i in 0..self.size
+        assert!((self.len() == rhs.len()));
+        for i in 0..self.len()
         {
             self[i] /= rhs[i]
         }
@@ -279,7 +288,7 @@ where T: DivAssign + Copy
 {
     fn div_assign(&mut self, rhs: T) 
     {
-        for i in 0..self.size
+        for i in 0..self.len()
         {
             self[i] /= rhs;
         }    
@@ -292,7 +301,7 @@ where T: Default + AddAssign + Mul<Output = T> + Copy
 {
     pub fn dot(&self, other: &Vector<T>) -> T
     {
-        assert!(self.size == other.size);
+        assert!(self.len() == other.len());
         let mut res = T::default();
         for (x1, x2) in self.iter().zip(other.iter())
         {
@@ -301,67 +310,19 @@ where T: Default + AddAssign + Mul<Output = T> + Copy
         res
     }
 }
-
-impl<T> Vector<T>
+impl<T> Vector<T> 
 where T: Default + AddAssign + Mul<Output = T> + Copy + Div<Output = T>
 {
-     pub fn proj(&self, other: &Vector<T>) -> Vector<T>
+    pub fn proj(&self, other: &Vector<T>) -> Vector<T>
     {
-        assert!(self.size == other.size);
+        assert!(self.len() == other.len());
         self.clone() * self.dot(other) / other.mag_sq()   
     }
 }
-
-impl<'a, T> Iterator for VectorIterator<'a, T>
-{
-    type Item = &'a T;
-    fn next(& mut self) -> Option<Self::Item> 
-    {
-        if self.current >= self.vector.size 
-        {
-            return None;
-        }
-        
-        let res = Some(&self.vector[self.current]);
-        self.current += 1;
-        res
-    }
-}
-
-//impl<'a, T> Iterator for VectorIteratorMut<'a, T>
-//where T: Default
-//{
-//    type Item = &'a mut T;
-//    fn next(&mut self) -> Option<Self::Item> 
-//    {
-//        if self.current >= self.vector.size
-//        {
-//            return None;
-//        }
-//        let res = Some(&mut self.vector[self.current]);
-//        self.current += 1;
-//        res
-//    }
-//}
-
-
 impl<T> Vector<T>
-{
-    pub fn iter(&self) -> VectorIterator<T>
-    {
-        VectorIterator { vector: self, current: 0, }
-    }
-
-    //pub fn iter_mut(&mut self) -> VectorIteratorMut<T>
-    //{
-    //   VectorIteratorMut { vector: self, current: 0 , _boo: PhantomData }
-    //} 
-}
-
-impl <T> Vector<T> 
-where T: AddAssign + Mul<Output = T> + Default + Copy
-{
-    pub fn mag_sq(&self) -> T
+where T: Default + AddAssign + Copy + Mul<Output = T>
+{   
+    fn mag_sq(&self) -> T
     {
         let mut res = T::default();
         for x in self.iter()
@@ -371,9 +332,8 @@ where T: AddAssign + Mul<Output = T> + Default + Copy
         res
     }
 }
-
 impl<T> Vector<T> 
-where T: AddAssign + Default + Copy
+where T: Default + Copy + AddAssign
 {
     pub fn sum(&self) -> T
     {
@@ -386,37 +346,42 @@ where T: AddAssign + Default + Copy
     }
 }
 
-impl<T> Vector<T> 
-where T: Mul<Output = T> + Sub<Output = T> + Default + Copy
+impl<T> Vector<T>
+where T: Default + Clone + Copy + Mul<Output = T> + Sub<Output = T>
 {
     pub fn cross(&self, other: &Vector<T>) -> Vector<T>
     {
-        assert!(self.size == other.size);
-        assert!(self.size == 3);
+        assert!(self.len() == other.len());
+        assert!(self.len() == 3);
         
-        let mut res = Vector::<T>::new(self.size);
+        let mut res = Vector::new(self.len());
         res[0] = self[1] * other[2] - self[2] * other[1];
         res[1] = self[0] * other[2] - self[2] * other[0];
         res[2] = self[0] * other[1] - self[1] * other[0];
         res
     }
-
-    
 }
-
 impl Vector<f64> 
-{
+{    
     pub fn mag(&self) -> f64
     {
         self.mag_sq().sqrt()
     }
-}
 
-impl Vector<f32>
-{
-    pub fn mag(&self) -> f32
+    pub fn approximately(&self, other: &Self, tol: f64) -> bool
     {
-        self.mag_sq().sqrt()
+        if self.len() != other.len()
+        {
+            return false;
+        }
+
+        for i in 0..self.len()
+        {
+            if (self[i] - other[i]).abs() > tol
+            {
+                return false;
+            } 
+        }
+        true
     }
 }
-
