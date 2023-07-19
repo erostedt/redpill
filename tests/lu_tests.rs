@@ -17,9 +17,9 @@ mod tests
 
         
         let lu = matrix.clone().lu();
-        assert!(matrix.approximately(&lu.l().matmul(lu.u()), 1e-8));
+        assert!(matrix.approximately(&lu.l().matmul(&lu.u()), 1e-8));
         let (l, u) = lu.split();
-        assert!(matrix.approximately(&l.matmul(u), 1e-8));
+        assert!(matrix.approximately(&l.matmul(&u), 1e-8));
         assert!(lu.compact.approximately(&lu_true, 1e-8));
     }
 
@@ -45,7 +45,7 @@ mod tests
         );
 
         let inv = matrix.clone().lu().inv();
-        assert!(matrix.matmul(inv).approximately(&Mat::eye(3), 1e-8));
+        assert!(matrix.matmul(&inv).approximately(&Mat::eye(3), 1e-8));
     }
 
     #[test]

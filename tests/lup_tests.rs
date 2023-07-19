@@ -45,7 +45,7 @@ mod tests
         );
 
         let inv = matrix.clone().lup().inv();
-        assert!(matrix.matmul(inv).approximately(&Mat::eye(3), 1e-8));
+        assert!(matrix.matmul(&inv).approximately(&Mat::eye(3), 1e-8));
     }
 
     #[test]

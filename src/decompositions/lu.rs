@@ -100,18 +100,18 @@ impl LU<f64>
         
         for i in 0..n
         {
-            for k in 0..i
+            for j in 0..i
             {
-                y[i] += self.compact[(i, k)] * y[k];
+                y[i] += self.compact[(i, j)] * y[j];
             }
             y[i] = b[i] - y[i];
         }
         
         for i in (0..=(n-1)).rev() 
         {
-            for k in (i+1)..n
+            for j in (i+1)..n
             {
-                x[i] += self.compact[(i, k)] * x[k];
+                x[i] += self.compact[(i, j)] * x[j];
             }
             x[i] = (1.0 / self.compact[(i, i)]) * (y[i] - x[i]);
         }
@@ -123,21 +123,12 @@ impl LU<f64>
     {
         assert!(self.compact.rows == self.compact.cols);
         let n = self.compact.rows;
-        let mut inverse = Mat::new((self.compact.rows, self.compact.cols));
+        let mut inverse = Mat::eye(self.compact.rows);
 
         for j in 0..n
         {
             for i in 0..n 
-            {
-                if i == j
-                {
-                    inverse[(i, j)] = 1.0; 
-                }
-                else 
-                {
-                    inverse[(i, j)] = 0.0;    
-                }
-                
+            {   
                 for k in 0..i
                 {
                     inverse[(i, j)] -= self.compact[(i, k)] * inverse[(k, j)];

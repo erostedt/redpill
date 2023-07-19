@@ -1,5 +1,6 @@
 use std::ops::{Add, AddAssign, Div, DivAssign, Index, IndexMut, Mul, MulAssign, Sub, SubAssign};
 use std::iter::Iterator;
+use crate::vector::Vector;
 
 #[derive(Clone, Debug)]
 pub struct Mat<T>
@@ -318,19 +319,19 @@ where T: Mul<Output = T> + Copy + Default
     }
 }
 
-impl<T> Mul<Vec<T>> for Mat<T>
+impl<T> Mul<Vector<T>> for Mat<T>
 where T: AddAssign + Mul<Output = T> + Copy + Default
 {
-    type Output = Vec<T>;
-    fn mul(self, rhs: Vec<T>) -> Self::Output 
+    type Output = Vector<T>;
+    fn mul(self, rhs: Vector<T>) -> Self::Output 
     {
         assert!(self.cols == rhs.len());
-        let mut out = vec![T::default(); self.rows];
+        let mut out = Vector::new(self.rows);
         for row in 0..self.rows
         {
             for col in 0..self.cols
             {
-                let pos = (self.rows, self.cols);
+                let pos = (row, col);
                 out[row] += self[pos] * rhs[col];
             }
         }
@@ -470,10 +471,10 @@ where T: DivAssign + Copy
 impl<T> Mat<T>
 where T: AddAssign + Mul<Output = T> + Copy + Default
 {
-    pub fn matmul(&self, rhs: Mat<T>) -> Mat<T>
+    pub fn matmul(&self, rhs: &Mat<T>) -> Mat<T>
     {
         assert!(self.cols == rhs.rows);
-        let mut out = Mat::new((self.rows, rhs.cols));
+        let mut out = Mat::<T>::new((self.rows, rhs.cols));
         for i in 0..self.rows
         {
             for j in 0..rhs.cols
@@ -486,6 +487,21 @@ where T: AddAssign + Mul<Output = T> + Copy + Default
         }
         out
     }
+
+    pub fn vecmul(&self, rhs: &Vector<T>) -> Vector<T>
+    {
+        assert!(self.cols == rhs.len());
+        let mut out = Vector::new(self.rows);
+        for row in 0..self.rows
+        {
+            for col in 0..self.cols
+            {
+                let pos = (row, col);
+                out[row] += self[pos] * rhs[col];
+            }
+        }
+        out
+    }    
 }
 
 impl<T> Mat<T>
@@ -519,7 +535,7 @@ impl <T> Mat<T>
         self.elements.iter_mut()
     }
 
-    pub fn transpose_self(&mut self)
+    pub fn transpose_self(mut self) -> Self
     {   
         let mut temp = self.rows;
         self.rows = self.cols;
@@ -528,7 +544,19 @@ impl <T> Mat<T>
         temp = self.row_stride;
         self.row_stride = self.col_stride;
         self.col_stride = temp;
-    }    
+        self
+    } 
+    
+    pub fn transpose(&mut self)
+    {   
+        let mut temp = self.rows;
+        self.rows = self.cols;
+        self.cols = temp;
+        
+        temp = self.row_stride;
+        self.row_stride = self.col_stride;
+        self.col_stride = temp;
+    }
 }
 
 impl <T> Mat<T> 
@@ -536,9 +564,8 @@ where T: Clone
 {
     pub fn transposed(&self) -> Mat<T>
     {
-        let mut mat = self.clone();
-        mat.transpose_self();
-        mat
+        let mat = self.clone();
+        mat.transpose_self()
     }
 }
 
