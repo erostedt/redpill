@@ -63,20 +63,6 @@ impl Mat<f64>
             }
         }
 
-        for j in 0..i
-        {
-            for k in 0..m
-            {
-                h[(j, k)] = 0.0;
-                h[(k, j)] = 0.0;
-            }
-        }
-
-        for j in 0..i
-        {
-            h[(j, j)] = 1.0;
-        }
-
         for j in i..m
         {
             for k in i..m
