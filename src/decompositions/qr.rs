@@ -126,6 +126,6 @@ impl QR<f64>
 
     pub fn det(&self) -> f64
     {
-        (self.q.trace().product::<f64>()).signum() * self.r.trace().product::<f64>()
+        (self.q.iter_trace().product::<f64>()).signum() * self.r.iter_trace().product::<f64>()
     }
 }

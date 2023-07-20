@@ -118,7 +118,7 @@ impl LUP<f64>
 
     pub fn det(&self) -> f64
     {
-        let mut d: f64 = self.compact.trace().product();
+        let mut d: f64 = self.compact.iter_trace().product();
         if self.num_swaps % 2 != 0
         {
             d = -d;

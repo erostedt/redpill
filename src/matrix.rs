@@ -19,6 +19,16 @@ pub struct TraceIter<'a, T>
     min_dim: usize,
 }
 
+pub struct SubMatIter<'a, T>
+{
+    pub matrix: &'a Mat<T>,
+    rmax: usize,
+    cmin: usize,
+    cmax: usize,
+    current_row: usize,
+    current_col: usize,
+}
+
 impl<'a, T> Iterator for TraceIter<'a, T>
 {
     type Item = &'a T;
@@ -31,6 +41,29 @@ impl<'a, T> Iterator for TraceIter<'a, T>
 
         let elem = Some(&self.matrix[(self.current, self.current)]);
         self.current += 1;
+        elem
+    }    
+}
+
+
+impl<'a, T> Iterator for SubMatIter<'a, T>
+{
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> 
+    {
+        if self.rmax >= self.current_row
+        {
+            return None;
+        }
+
+        let elem = Some(&self.matrix[(self.current_row, self.current_col)]);
+        
+        self.current_col += 1;
+        if self.current_col >= self.cmax
+        {
+            self.current_row += 1;
+            self.current_col = self.cmin;
+        }
         elem
     }    
 }
@@ -72,11 +105,42 @@ where T: Default + Clone + Sized
         (self.rows, self.cols)
     }
 
-    pub fn trace(&self) -> TraceIter<T>
+    pub fn iter_trace(&self) -> TraceIter<T>
     {
         let n = std::cmp::min(self.rows, self.cols);
         TraceIter { matrix: self, current: 0, min_dim: n }
     }
+
+    pub fn iter_submat(&self, rmin: usize, rmax: usize, cmin: usize, cmax: usize) -> Result<SubMatIter<T>, &str>
+    {
+        if (rmin > rmax) || (cmin > cmax) || (rmax > self.rows) || (cmax > self.cols)
+        {
+            return Err("Invalid submatrix.");
+        }
+        Ok(SubMatIter { matrix: self, rmax, cmin, cmax, current_row: rmin, current_col: cmin })
+    }
+
+    pub fn submat(&self, rmin: usize, rmax: usize, cmin: usize, cmax: usize) -> Result<Mat<T>, &str>
+    {
+        if (rmin > rmax) || (cmin > cmax) || (rmax > self.rows) || (cmax > self.cols)
+        {
+            return Err("Invalid submatrix.");
+        }
+
+        let rows = rmax - rmin;
+        let cols = cmax - cmin;
+        let mut sub = Mat::<T>::new((rows, cols));
+        
+        for row in 0..rows
+        {
+            for col in 0..cols
+            {
+                sub[(row, col)] = self[(row + rmin, (col + cmin))].clone();
+            }
+        }
+        Ok(sub)
+    }
+
 }
 
 impl<T> PartialEq<Mat<T>> for Mat<T>

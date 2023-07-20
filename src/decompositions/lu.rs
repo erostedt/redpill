@@ -150,6 +150,6 @@ impl LU<f64>
 
     pub fn det(&self) -> f64
     {
-        self.compact.trace().product()
+        self.compact.iter_trace().product()
     }
 }
