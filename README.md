@@ -1,11 +1,4 @@
-# Todo
+# Intention
 
-## Decompositions
-* Hessenberg
-* svd 
-* pca 
-* eig
-
-least square with qr
-What to do with complex values?
-change to result types instead of asserting everywhere.
+Just for educational use, trying to learn some rust. 
+Should not be used for anything serious and will likely never be updated again.
